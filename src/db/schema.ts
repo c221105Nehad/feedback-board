@@ -20,7 +20,9 @@ export const posts = pgTable("posts", {
   title: text("title").notNull(),
   description: text("description").notNull(),
   status: statusEnum("status").notNull().default("open"),
-  authorId: text("author_id").notNull(),
+  authorId: text("author_id")
+  .notNull()
+  .references(() => user.id, { onDelete: "cascade" }),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
@@ -40,7 +42,9 @@ export const comments = pgTable("comments", {
   postId: uuid("post_id")
     .notNull()
     .references(() => posts.id, { onDelete: "cascade" }),
-  authorId: text("author_id").notNull(),
+  authorId: text("author_id")
+  .notNull()
+  .references(() => user.id, { onDelete: "cascade" }),
   body: text("body").notNull(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });

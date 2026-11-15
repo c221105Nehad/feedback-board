@@ -4,6 +4,8 @@ import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { db } from "@/db";
 import { posts } from "@/db/schema";
+import { headers } from "next/headers";
+import { auth } from "@/lib/auth";
 
 const postSchema = z.object({
   title: z
