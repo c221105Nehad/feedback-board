@@ -37,9 +37,9 @@ export default async function Home() {
 
   const myVotes = session
     ? await db
-        .select({ postId: votes.postId })
-        .from(votes)
-        .where(eq(votes.userId, session.user.id))
+      .select({ postId: votes.postId })
+      .from(votes)
+      .where(eq(votes.userId, session.user.id))
     : [];
   const votedIds = new Set(myVotes.map((v) => v.postId));
 
@@ -77,7 +77,11 @@ export default async function Home() {
 
             <div className="flex-1">
               <div className="flex items-center justify-between gap-4">
-                <h2 className="text-lg font-semibold">{post.title}</h2>
+                <h2 className="text-lg font-semibold">
+                  <Link href={`/posts/${post.id}`} className="hover:underline">
+                    {post.title}
+                  </Link>
+                </h2>
                 <span
                   className={`rounded px-2 py-1 text-xs font-medium ${statusStyles[post.status]}`}
                 >

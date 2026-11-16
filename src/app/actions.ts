@@ -1,11 +1,11 @@
 "use server";
 
+import { posts, votes, comments } from "@/db/schema";
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { and, eq } from "drizzle-orm";
 import { db } from "@/db";
-import { posts, votes } from "@/db/schema";
 import { auth } from "@/lib/auth";
 
 const postSchema = z.object({
@@ -86,4 +86,50 @@ export async function toggleVote(postId: string) {
   }
 
   revalidatePath("/");
+}
+
+const commentSchema = z.object({
+  body: z
+    .string()
+    .trim()
+    .min(1, "Comment cannot be empty")
+    .max(500, "Comment must be 500 characters or fewer"),
+});
+
+export type CommentState = {
+  error?: string;
+  value?: string;
+  success?: boolean;
+};
+
+export async function addComment(
+  postId: string,
+  prevState: CommentState,
+  formData: FormData
+): Promise<CommentState> {
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session) {
+    return { error: "You must be signed in to comment." };
+  }
+
+  const id = z.uuid().safeParse(postId);
+  if (!id.success) {
+    return { error: "Invalid post." };
+  }
+
+  const raw = String(formData.get("body") ?? "");
+  const parsed = commentSchema.safeParse({ body: raw });
+
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0].message, value: raw };
+  }
+
+  await db.insert(comments).values({
+    postId: id.data,
+    authorId: session.user.id,
+    body: parsed.data.body,
+  });
+
+  revalidatePath(`/posts/${id.data}`);
+  return { success: true };
 }
