@@ -2,9 +2,10 @@
 
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
-import { db } from "@/db";
-import { posts } from "@/db/schema";
 import { headers } from "next/headers";
+import { and, eq } from "drizzle-orm";
+import { db } from "@/db";
+import { posts, votes } from "@/db/schema";
 import { auth } from "@/lib/auth";
 
 const postSchema = z.object({
@@ -33,6 +34,12 @@ export async function createPost(
   prevState: FormState,
   formData: FormData
 ): Promise<FormState> {
+  const session = await auth.api.getSession({ headers: await headers() });
+
+  if (!session) {
+    return { message: "You must be signed in to post." };
+  }
+
   const raw = {
     title: String(formData.get("title") ?? ""),
     description: String(formData.get("description") ?? ""),
@@ -50,9 +57,33 @@ export async function createPost(
   await db.insert(posts).values({
     title: parsed.data.title,
     description: parsed.data.description,
-    authorId: "anonymous",
+    authorId: session.user.id,
   });
 
   revalidatePath("/");
   return { message: "Post created!" };
+}
+
+export async function toggleVote(postId: string) {
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session) return;
+
+  const id = z.uuid().safeParse(postId);
+  if (!id.success) return;
+
+  const userId = session.user.id;
+
+  const inserted = await db
+    .insert(votes)
+    .values({ userId, postId: id.data })
+    .onConflictDoNothing()
+    .returning({ postId: votes.postId });
+
+  if (inserted.length === 0) {
+    await db
+      .delete(votes)
+      .where(and(eq(votes.userId, userId), eq(votes.postId, id.data)));
+  }
+
+  revalidatePath("/");
 }

@@ -29,7 +29,9 @@ export const posts = pgTable("posts", {
 export const votes = pgTable(
   "votes",
   {
-    userId: text("user_id").notNull(),
+    userId: text("user_id")
+  .notNull()
+  .references(() => user.id, { onDelete: "cascade" }),
     postId: uuid("post_id")
       .notNull()
       .references(() => posts.id, { onDelete: "cascade" }),
