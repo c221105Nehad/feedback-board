@@ -15,6 +15,11 @@ export default async function Header() {
 
         {session ? (
           <div className="flex items-center gap-3 text-sm">
+            {session.user.role === "admin" && (
+              <Link href="/admin" className="underline">
+                Admin
+              </Link>
+            )}
             <span>{session.user.name}</span>
             <SignOutButton />
           </div>

@@ -7,5 +7,14 @@ import * as schema from "@/db/schema";
 export const auth = betterAuth({
   database: drizzleAdapter(db, { provider: "pg", schema }),
   emailAndPassword: { enabled: true },
+  user: {
+    additionalFields: {
+      role: {
+        type: "string",
+        defaultValue: "user",
+        input: false,
+      },
+    },
+  },
   plugins: [nextCookies()],
 });

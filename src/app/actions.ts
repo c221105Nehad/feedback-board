@@ -1,6 +1,6 @@
 "use server";
 
-import { posts, votes, comments } from "@/db/schema";
+import { posts, votes, comments, statusEnum } from "@/db/schema";
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
@@ -132,4 +132,32 @@ export async function addComment(
 
   revalidatePath(`/posts/${id.data}`);
   return { success: true };
+}
+
+const statusUpdateSchema = z.object({
+  postId: z.uuid(),
+  status: z.enum(statusEnum.enumValues),
+});
+
+export async function updatePostStatus(formData: FormData) {
+  const session = await auth.api.getSession({ headers: await headers() });
+
+  if (!session || session.user.role !== "admin") {
+    throw new Error("Forbidden");
+  }
+
+  const parsed = statusUpdateSchema.safeParse({
+    postId: formData.get("postId"),
+    status: formData.get("status"),
+  });
+  if (!parsed.success) return;
+
+  await db
+    .update(posts)
+    .set({ status: parsed.data.status })
+    .where(eq(posts.id, parsed.data.postId));
+
+  revalidatePath("/");
+  revalidatePath(`/posts/${parsed.data.postId}`);
+  revalidatePath("/admin");
 }
