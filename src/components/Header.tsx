@@ -20,7 +20,9 @@ export default async function Header() {
                 Admin
               </Link>
             )}
-            <span>{session.user.name}</span>
+            <span>
+              {session.user.name}
+            </span>
             <SignOutButton />
           </div>
         ) : (
