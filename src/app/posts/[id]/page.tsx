@@ -7,6 +7,8 @@ import { db } from "@/db";
 import { posts, comments, user } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import CommentForm from "@/components/CommentForm";
+import { cache } from "react";
+import type { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
 
@@ -17,19 +19,7 @@ const statusStyles: Record<string, string> = {
   done: "bg-green-100 text-green-700",
 };
 
-export default async function PostPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
-  const { id } = await params;
-
-  if (!z.uuid().safeParse(id).success) {
-    notFound();
-  }
-
-  const session = await auth.api.getSession({ headers: await headers() });
-
+const getPost = cache(async (id: string) => {
   const [post] = await db
     .select({
       id: posts.id,
@@ -44,6 +34,41 @@ export default async function PostPage({
     .where(eq(posts.id, id))
     .limit(1);
 
+  return post;
+});
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  const { id } = await params;
+
+  if (!z.uuid().safeParse(id).success) return { title: "Post not found" };
+
+  const post = await getPost(id);
+  if (!post) return { title: "Post not found" };
+
+  return {
+    title: post.title,
+    description: post.description.slice(0, 160),
+  };
+}
+
+export default async function PostPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+
+  if (!z.uuid().safeParse(id).success) {
+    notFound();
+  }
+
+  const session = await auth.api.getSession({ headers: await headers() });
+
+  const post = await getPost(id);
   if (!post) {
     notFound();
   }

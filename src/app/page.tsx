@@ -1,13 +1,23 @@
 import { db } from "@/db";
-import { posts, user, votes } from "@/db/schema";
+import { posts, user, votes, statusEnum } from "@/db/schema";
 import { count, desc, eq } from "drizzle-orm";
 import { headers } from "next/headers";
 import Link from "next/link";
+import { z } from "zod";
 import { auth } from "@/lib/auth";
 import PostForm from "@/components/PostForm";
 import VoteButton from "@/components/VoteButton";
+import { Filters, Pagination } from "@/components/Filters";
 
 export const dynamic = "force-dynamic";
+
+const PAGE_SIZE = 10;
+
+const querySchema = z.object({
+  status: z.enum(statusEnum.enumValues).optional().catch(undefined),
+  sort: z.enum(["top", "newest"]).catch("top"),
+  page: z.coerce.number().int().min(1).catch(1),
+});
 
 const statusStyles: Record<string, string> = {
   open: "bg-gray-100 text-gray-700",
@@ -16,10 +26,16 @@ const statusStyles: Record<string, string> = {
   done: "bg-green-100 text-green-700",
 };
 
-export default async function Home() {
+export default async function Home({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const { status, sort, page } = querySchema.parse(await searchParams);
+
   const session = await auth.api.getSession({ headers: await headers() });
 
-  const allPosts = await db
+  const rows = await db
     .select({
       id: posts.id,
       title: posts.title,
@@ -32,16 +48,28 @@ export default async function Home() {
     .from(posts)
     .innerJoin(user, eq(posts.authorId, user.id))
     .leftJoin(votes, eq(votes.postId, posts.id))
+    .where(status ? eq(posts.status, status) : undefined)
     .groupBy(posts.id, user.id)
-    .orderBy(desc(count(votes.userId)), desc(posts.createdAt));
+    .orderBy(
+      ...(sort === "top"
+        ? [desc(count(votes.userId)), desc(posts.createdAt)]
+        : [desc(posts.createdAt)])
+    )
+    .limit(PAGE_SIZE + 1)
+    .offset((page - 1) * PAGE_SIZE);
+
+  const hasNext = rows.length > PAGE_SIZE;
+  const visiblePosts = rows.slice(0, PAGE_SIZE);
 
   const myVotes = session
     ? await db
-      .select({ postId: votes.postId })
-      .from(votes)
-      .where(eq(votes.userId, session.user.id))
+        .select({ postId: votes.postId })
+        .from(votes)
+        .where(eq(votes.userId, session.user.id))
     : [];
   const votedIds = new Set(myVotes.map((v) => v.postId));
+
+  const current = { status, sort, page };
 
   return (
     <main className="mx-auto max-w-2xl p-6">
@@ -62,8 +90,10 @@ export default async function Home() {
         </p>
       )}
 
+      <Filters current={current} />
+
       <ul className="space-y-4">
-        {allPosts.map((post) => (
+        {visiblePosts.map((post) => (
           <li
             key={post.id}
             className="flex gap-4 rounded-lg border border-gray-300 p-4"
@@ -95,7 +125,15 @@ export default async function Home() {
             </div>
           </li>
         ))}
+
+        {visiblePosts.length === 0 && (
+          <li className="text-sm text-gray-500">
+            No posts match this filter.
+          </li>
+        )}
       </ul>
+
+      <Pagination current={current} hasNext={hasNext} />
     </main>
   );
 }
