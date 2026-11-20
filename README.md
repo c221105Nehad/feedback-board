@@ -1,36 +1,139 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Feedback Board
 
-## Getting Started
+A full-stack feedback and roadmap board. Users suggest features, upvote and discuss them, and admins move ideas through **Open → Planned → In progress → Done**, so everyone can see what's coming.
 
-First, run the development server:
+**Live demo:** https://feedback-board-na83.vercel.app
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+![Home page](docs/home.png)
+
+| Post detail and comments | Admin moderation |
+| --- | --- |
+| ![Post page](docs/post.png) | ![Admin page](docs/admin.png) |
+
+## Features
+
+- **Authentication:** email and password sign-up and sign-in, with sessions stored in HTTP-only cookies
+- **Feature requests:** create posts with server-side validation
+- **Upvotes:** optimistic UI (the count updates instantly), with one vote per user per post enforced by the database
+- **Comments:** a dedicated page for each post
+- **Roadmap statuses:** admins change a post's status from a protected `/admin` page
+- **Moderation:** admins can delete posts (with their votes and comments) and individual comments
+- **Browsing:** filter by status, sort by top or newest, and paginate, all driven by URL search params so every view is shareable
+- **Polish:** loading skeletons, error boundaries, a custom 404, and per-post SEO metadata
+
+## Tech stack
+
+| Area | Tools |
+| --- | --- |
+| Framework | Next.js 16 (App Router), React, TypeScript |
+| Styling | Tailwind CSS |
+| Database | PostgreSQL on Neon, with Drizzle ORM |
+| Auth | Better Auth |
+| Validation | Zod |
+| Deployment | Vercel |
+
+## Design decisions
+
+- **Server Components by default.** Pages query the database directly on the server. `"use client"` is limited to small interactive pieces such as the vote button and the forms.
+- **Server Actions for every mutation, each one re-checking the session.** Actions are public endpoints, so authorization lives next to the data and never relies on hidden UI.
+- **Roles can't be self-assigned.** The `role` field is excluded from sign-up input (`input: false`) and is changed only in the database. The admin page and every admin action check the role on the server.
+- **The database enforces the rules.** A composite primary key makes duplicate votes impossible, and foreign keys with `ON DELETE CASCADE` keep data consistent when a post or user is removed.
+- **The URL is the state** for filters, sorting, and pagination. Every parameter is validated with Zod and falls back to a safe default, so invalid input never reaches the database.
+- **Optimistic updates** with `useOptimistic`: the UI responds immediately and corrects itself automatically if the server rejects the action.
+- **`proxy.ts` is only a convenience layer.** It redirects visitors without a session cookie away from `/admin`, but real security is enforced in the page and the actions.
+
+## Project structure
+
+```
+src/
+├── app/
+│   ├── page.tsx                 # Home: list, filters, sorting, pagination
+│   ├── layout.tsx               # Root layout, header, site metadata
+│   ├── actions.ts               # Server Actions (posts, votes, comments, admin)
+│   ├── admin/page.tsx           # Admin: change status, delete posts
+│   ├── posts/[id]/              # Post detail: page, loading, error, not-found
+│   ├── sign-in/ · sign-up/      # Auth pages
+│   └── api/auth/[...all]/       # Better Auth route handler
+├── components/                  # Header, PostForm, CommentForm, VoteButton, Filters, ...
+├── db/                          # Drizzle client and schema
+├── lib/                         # Auth server config and auth client
+└── proxy.ts                     # Route guard for /admin
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Getting started
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+**Prerequisites:** Node.js 20 or newer, and a free PostgreSQL database (for example, [Neon](https://neon.tech)).
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+git clone https://github.com/[your-username]/feedback-board.git
+cd feedback-board
+npm install
+```
 
-## Learn More
+Create a `.env.local` file in the project root (see `.env.example`):
 
-To learn more about Next.js, take a look at the following resources:
+```
+DATABASE_URL="postgresql://user:password@host/dbname"
+BETTER_AUTH_SECRET="a-random-32-byte-hex-string"
+BETTER_AUTH_URL="http://localhost:4000"
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Generate a secret with:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
 
-## Deploy on Vercel
+Create the tables and start the app:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```bash
+npm run db:push
+npm run dev
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Open http://localhost:4000 (use `localhost`, not your network IP, because Better Auth checks the request origin).
+
+### Becoming an admin
+
+There is deliberately no UI for this. Sign up through the app, then run this in your database's SQL editor (or in `npm run db:studio`):
+
+```sql
+UPDATE "user" SET role = 'admin' WHERE email = 'you@example.com';
+```
+
+Refresh the app, and an **Admin** link appears in the header.
+
+## Scripts
+
+| Command | What it does |
+| --- | --- |
+| `npm run dev` | Start the dev server on port 4000 |
+| `npm run build` | Create a production build |
+| `npm run start` | Run the production build |
+| `npm run db:push` | Sync the schema to the database |
+| `npm run db:studio` | Open Drizzle Studio to browse data |
+
+## Deployment
+
+Deployed on Vercel with these environment variables:
+
+| Variable | Notes |
+| --- | --- |
+| `DATABASE_URL` | Connection string of the production database |
+| `BETTER_AUTH_SECRET` | A different secret from local development |
+| `BETTER_AUTH_URL` | The production domain exactly, with `https://` and no trailing slash |
+
+Local development and production use separate Neon branches, so testing never touches live data.
+
+## What I'd add next
+
+- Rate limiting on posting, commenting, and voting
+- Email verification and email notifications when a status changes
+- Authors editing and deleting their own posts
+- Automated tests for the Server Actions
+- Full-text search across posts
+
+## Author
+
+**[Your name]**, final-year Computer Science and Engineering student  
+[LinkedIn URL] · [GitHub URL]
