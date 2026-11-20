@@ -5,7 +5,8 @@ import { desc, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { posts, user, statusEnum } from "@/db/schema";
 import { auth } from "@/lib/auth";
-import { updatePostStatus } from "@/app/actions";
+import { updatePostStatus, deletePost } from "@/app/actions";
+import ConfirmSubmitButton from "@/components/ConfirmSubmitButton";
 
 export const dynamic = "force-dynamic";
 
@@ -34,7 +35,7 @@ export default async function AdminPage() {
         {allPosts.map((post) => (
           <li
             key={post.id}
-            className="flex items-center justify-between gap-4 rounded-lg border border-gray-300 p-4"
+            className="flex flex-wrap items-center justify-between gap-4 rounded-lg border border-gray-300 p-4"
           >
             <div className="min-w-0">
               <Link
@@ -46,28 +47,47 @@ export default async function AdminPage() {
               <p className="text-xs text-gray-500">by {post.authorName}</p>
             </div>
 
-            <form action={updatePostStatus} className="flex items-center gap-2">
-              <input type="hidden" name="postId" value={post.id} />
-              <select
-                name="status"
-                defaultValue={post.status}
-                className="rounded border border-gray-300 bg-transparent p-1 text-sm"
+            <div className="flex items-center gap-2">
+              <form
+                action={updatePostStatus}
+                className="flex items-center gap-2"
               >
-                {statusEnum.enumValues.map((s) => (
-                  <option key={s} value={s} className="text-black">
-                    {s.replace("_", " ")}
-                  </option>
-                ))}
-              </select>
-              <button
-                type="submit"
-                className="rounded bg-blue-600 px-3 py-1 text-sm text-white"
-              >
-                Save
-              </button>
-            </form>
+                <input type="hidden" name="postId" value={post.id} />
+                <select
+                  name="status"
+                  defaultValue={post.status}
+                  className="rounded border border-gray-300 bg-transparent p-1 text-sm"
+                >
+                  {statusEnum.enumValues.map((s) => (
+                    <option key={s} value={s} className="text-black">
+                      {s.replace("_", " ")}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="submit"
+                  className="rounded bg-blue-600 px-3 py-1 text-sm text-white"
+                >
+                  Save
+                </button>
+              </form>
+
+              <form action={deletePost}>
+                <input type="hidden" name="postId" value={post.id} />
+                <ConfirmSubmitButton
+                  message={`Delete "${post.title}" and all its comments and votes? This cannot be undone.`}
+                  className="rounded border border-red-500 px-3 py-1 text-sm text-red-500"
+                >
+                  Delete
+                </ConfirmSubmitButton>
+              </form>
+            </div>
           </li>
         ))}
+
+        {allPosts.length === 0 && (
+          <li className="text-sm text-gray-500">No posts yet.</li>
+        )}
       </ul>
     </main>
   );

@@ -9,6 +9,8 @@ import { auth } from "@/lib/auth";
 import CommentForm from "@/components/CommentForm";
 import { cache } from "react";
 import type { Metadata } from "next";
+import { deleteComment } from "@/app/actions";
+import ConfirmSubmitButton from "@/components/ConfirmSubmitButton";
 
 export const dynamic = "force-dynamic";
 
@@ -118,12 +120,24 @@ export default async function PostPage({
           {postComments.map((c) => (
             <li key={c.id} className="rounded-lg border border-gray-300 p-3">
               <p className="whitespace-pre-wrap text-sm">{c.body}</p>
-              <p className="mt-2 text-xs text-gray-500">
-                {c.authorName} ·{" "}
-                {c.createdAt.toLocaleDateString("en-US", {
-                  dateStyle: "medium",
-                })}
-              </p>
+              <div className="mt-2 flex items-center justify-between">
+                <p className="text-xs text-gray-500">
+                  {c.authorName} ·{" "}
+                  {c.createdAt.toLocaleDateString("en-US", { dateStyle: "medium" })}
+                </p>
+                {session?.user.role === "admin" && (
+                  <form action={deleteComment}>
+                    <input type="hidden" name="commentId" value={c.id} />
+                    <input type="hidden" name="postId" value={post.id} />
+                    <ConfirmSubmitButton
+                      message="Delete this comment?"
+                      className="text-xs text-red-500 underline"
+                    >
+                      Delete
+                    </ConfirmSubmitButton>
+                  </form>
+                )}
+              </div>
             </li>
           ))}
           {postComments.length === 0 && (

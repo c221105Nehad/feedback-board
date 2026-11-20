@@ -161,3 +161,46 @@ export async function updatePostStatus(formData: FormData) {
   revalidatePath(`/posts/${parsed.data.postId}`);
   revalidatePath("/admin");
 }
+
+const deletePostSchema = z.object({ postId: z.uuid() });
+
+export async function deletePost(formData: FormData) {
+  const session = await auth.api.getSession({ headers: await headers() });
+
+  if (!session || session.user.role !== "admin") {
+    throw new Error("Forbidden");
+  }
+
+  const parsed = deletePostSchema.safeParse({
+    postId: formData.get("postId"),
+  });
+  if (!parsed.success) return;
+
+  await db.delete(posts).where(eq(posts.id, parsed.data.postId));
+
+  revalidatePath("/");
+  revalidatePath("/admin");
+}
+
+const deleteCommentSchema = z.object({
+  commentId: z.uuid(),
+  postId: z.uuid(),
+});
+
+export async function deleteComment(formData: FormData) {
+  const session = await auth.api.getSession({ headers: await headers() });
+
+  if (!session || session.user.role !== "admin") {
+    throw new Error("Forbidden");
+  }
+
+  const parsed = deleteCommentSchema.safeParse({
+    commentId: formData.get("commentId"),
+    postId: formData.get("postId"),
+  });
+  if (!parsed.success) return;
+
+  await db.delete(comments).where(eq(comments.id, parsed.data.commentId));
+
+  revalidatePath(`/posts/${parsed.data.postId}`);
+}
