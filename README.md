@@ -128,4 +128,4 @@ Local development and production use separate Neon branches, so testing never to
 ## Author
 
 **Inkiad Hossain Nehad**
-[LinkedIn URL] · [GitHub URL]
+www.linkedin.com/in/inkiad-hossain-nehad-a83970275 · [[GitHub URL]](https://github.com/c221105Nehad/)
