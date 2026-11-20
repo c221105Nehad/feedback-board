@@ -125,15 +125,7 @@ Deployed on Vercel with these environment variables:
 
 Local development and production use separate Neon branches, so testing never touches live data.
 
-## What I'd add next
-
-- Rate limiting on posting, commenting, and voting
-- Email verification and email notifications when a status changes
-- Authors editing and deleting their own posts
-- Automated tests for the Server Actions
-- Full-text search across posts
-
 ## Author
 
-**[Your name]**, final-year Computer Science and Engineering student  
+**Inkiad Hossain Nehad**
 [LinkedIn URL] · [GitHub URL]
