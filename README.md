@@ -4,11 +4,11 @@ A full-stack feedback and roadmap board. Users suggest features, upvote and disc
 
 **Live demo:** https://feedback-board-na83.vercel.app
 
-![Home page](docs/home.png)
+![Home page](docs/home.jpeg)
 
 | Post detail and comments | Admin moderation |
 | --- | --- |
-| ![Post page](docs/post.png) | ![Admin page](docs/admin.png) |
+| ![Post page](docs/post.jpeg) | ![Admin page](docs/admin.jpeg) |
 
 ## Features
 
